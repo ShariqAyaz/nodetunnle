@@ -5,7 +5,6 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    
     "start": "nodemon app.js"
   },
   "repository": {
@@ -19,9 +18,12 @@
   },
   "homepage": "https://github.com/ShariqAyaz/nodetunnle#readme",
   "dependencies": {
+    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
     "express": "^4.18.2",
     "express-basic-auth": "^1.2.1",
     "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
     "pg": "^8.9.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.28.0",

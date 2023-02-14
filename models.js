@@ -37,32 +37,10 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: false,
   },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  created_by_db_user: {
-    type: DataTypes.STRING(50),
-    allowNull: false,
-  },
 }, {
   tableName: 'users',
   timestamps: false,
 });
 
-// Define the triggers as class methods on the model
-User.addHook('beforeCreate', (user, options) => {
-  user.created_by_db_user = 'your_db_user';
-});
-
-User.addHook('beforeUpdate', (user, options) => {
-  user.updated_at = new Date();
-});
 
 module.exports = { sequelize, User };
