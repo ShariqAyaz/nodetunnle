@@ -42,5 +42,30 @@ const User = sequelize.define('User', {
   timestamps: false,
 });
 
+const UserToken = sequelize.define('UserToken', {
+  id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    unique: true,
+  },
+  accessToken: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  ip: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+}, {
+  tableName: 'user_token',
+  timestamps: false,
+});
 
-module.exports = { sequelize, User };
+
+module.exports = { sequelize, User ,UserToken  };

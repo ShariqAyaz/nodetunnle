@@ -2,7 +2,7 @@ const express = require("express");
 const basicAuth = require("express-basic-auth");
 const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
-const { sequelize, User } = require("./models");
+const { sequelize, User, UserToken } = require("./models");
 const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
 
@@ -13,7 +13,7 @@ var salt = bcrypt.genSaltSync(14);
 
 // home page
 app.get("/", (req, res) => {
-  res.send("Welcome to the home page");
+  res.send("Welcome to the home page" + req.ip);
 });
 
 app.post("/login", async (req, res) => {
@@ -26,8 +26,27 @@ app.post("/login", async (req, res) => {
     return;
   }
 
-  const accessToken = jwt.sign({ email }, "bingobaba777");
-  res.json({ accessToken });
+  const user_id = user.id;
+
+  const user_token_exists = await UserToken.findOne({ where: { user_id } });
+
+  if (user_token_exists === null) {
+
+    const accessToken = jwt.sign({ email }, "bingobaba777");
+
+    let ip = req.ip
+
+    const newUserToken = await UserToken.create({ user_id, accessToken, ip });
+
+    res.json({ accessToken });
+
+  } else {
+    
+    console.log(user_token_exists);
+
+    res.json({ accessToken });
+  }
+
 });
 
 
