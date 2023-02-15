@@ -33,3 +33,10 @@ POST /login 200 222 - 1526.189 ms
 POST /login 200 223 - 1754.385 ms
 POST /register 200 20 - 1501.085 ms
 POST /login 200 222 - 1468.966 ms
+POST /login 200 242 - 1802.984 ms
+POST /login 200 243 - 1513.398 ms
+POST /login 200 223 - 1468.955 ms
+POST /login 200 222 - 1509.731 ms
+POST /login 200 223 - 1521.526 ms
+POST /login 200 223 - 1446.841 ms
+POST /login 200 222 - 1471.243 ms

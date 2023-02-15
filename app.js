@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const { sequelize, User, UserToken } = require("./models");
 const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
+const config = require('./config')
 
 const morgan = require('morgan');
 const path = require("path");
@@ -48,10 +49,28 @@ const errorLogger = morgan('tiny', {
 // log errors to console and file
 app.use(errorLogger);
 
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
-app.get("/", (req, res) => {
-  res.send("Welcome to the home page" + req.ip);
+  if (token == null) {
+    return res.sendStatus(401);
+  }
+
+  jwt.verify(token, "bingobaba777", (err, user) => {
+    if (err) {
+      return res.sendStatus(403);
+    }
+
+    req.user = user;
+    next();
+  });
+};
+
+app.get("/", authenticateToken, (req, res) => {
+  res.send(`Welcome ${req.user.email}!`);
 });
+
 
 app.post("/login", async (req, res) => {
 
@@ -68,7 +87,7 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
     res.json({
@@ -91,7 +110,7 @@ app.post("/login", async (req, res) => {
       } else {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -105,7 +124,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
