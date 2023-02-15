@@ -5,7 +5,8 @@ const bodyParser = require("body-parser");
 const { sequelize, User, UserToken } = require("./models");
 const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
-const config = require('./config')
+
+// config = require('../config/config');
 
 const morgan = require('morgan');
 const path = require("path");
