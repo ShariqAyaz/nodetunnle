@@ -8,7 +8,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   dialect: 'postgres',
 });
 
-
 // const sequelize = new Sequelize('nodetunnle', 'postgres', 'abc.123', {
 //   host: 'localhost',
 //   dialect: 'postgres',

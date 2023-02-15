@@ -50,17 +50,22 @@ const errorLogger = morgan('tiny', {
 // log errors to console and file
 app.use(errorLogger);
 
-const authenticateToken = (req, res, next) => {
+let blacklistedTokens = new Set();
+
+// Middleware to check if the user has a valid token
+const checkToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null) {
-    return res.sendStatus(401);
+  if (!token) {
+    req.user = null;
+    return next();
   }
 
   jwt.verify(token, "bingobaba777", (err, user) => {
     if (err) {
-      return res.sendStatus(403);
+      req.user = null;
+      return next();
     }
 
     req.user = user;
@@ -68,9 +73,130 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-app.get("/", authenticateToken, (req, res) => {
-  res.send(`Welcome ${req.user.email}!`);
+// Middleware to check if the user's token is blacklisted
+const accessTokenExpirationTime = 60; // 1 hour in minutes
+
+const checkTokenBlacklist = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token && blacklistedTokens.has(token)) {
+    // Check if token has expired
+
+    //blacklistedTokens.delete(token);
+    req.user = null;
+
+  }
+
+  next();
+};
+
+// Route handler for the home page
+app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
+
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader) {
+    // User is not authenticated
+    res.send('Please log in to access this page');
+  } else {
+
+    const token = authHeader.split(" ")[1];
+
+    if (!req.user) {
+      // User is not authenticated
+      const usertoken = await UserToken.findOne({ where: { accessToken: token } });
+      if (usertoken) {
+
+        if (usertoken.ip === req.ip) {
+          
+          UserToken.destroy({ where: { user_id: usertoken.user_id } });
+          const user = await User.findOne({ id: usertoken.user_id});
+          const email = user.email;
+          const user_id = user.id;
+          const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+          const ip = req.ip;
+          const newUserToken = await UserToken.create({ user_id, accessToken, ip });
+          res.json({
+            message: "Obtain New After Expire",
+            accessToken
+          });
+        }else{
+          res.send(`Welcome...!<br> Login First <a href="/login">Login</a> |`);
+        }
+
+      } else {
+        res.send(`Welcome...!<br> Login First <a href="/login">Login</a>`);
+      }
+
+    } else if (blacklistedTokens.has(token)) {
+      // User's token is blacklisted
+      res.send('Your session has expired. Please log in again.');
+    } else {
+      // User is authenticated and has a valid token
+      res.send(`Welcome ${req.user.username} | ${req.user.email}! <a href="/logout">Logout</a> <a href="/profile">Profile</a>`);
+    }
+
+  }
+
 });
+
+// Route to renew the user's token
+app.post("/renew-token", checkTokenBlacklist, (req, res) => {
+  const { email } = req.body;
+  const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+  res.json({ accessToken });
+});
+
+// logout
+app.post("/logout", checkTokenBlacklist, async (req, res) => {
+
+  const { email } = req.body;
+  const user = await User.findOne({ where: { email } });
+
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader) {
+
+    const user_id = user.id;
+    const user_token_exists = await UserToken.findOne({ where: { user_id } });
+
+    if (user_token_exists) {
+
+      UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+      blacklistedTokens.add(user_token_exists.accessToken);
+
+    }
+
+  } else {
+
+    const token = authHeader.split(" ")[1];
+    const user_id = user.id;
+    const user_token_exists = await UserToken.findOne({ where: { user_id } });
+
+    if (user_token_exists) {
+
+      UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+      blacklistedTokens.add(token);
+
+    }
+  }
+
+  const user_id = user.id;
+  const user_token_exists = await UserToken.findOne({ where: { user_id } });
+
+  if (user_token_exists) {
+    UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+
+    blacklistedTokens.add(token);
+
+  }
+
+  console.log(blacklistedTokens);
+
+  res.sendStatus(200);
+});
+
 
 
 app.post("/login", async (req, res) => {
@@ -88,7 +214,7 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
+    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
     res.json({
@@ -104,14 +230,16 @@ app.post("/login", async (req, res) => {
       // Check if the token has expired
       if (Date.now() >= decodedToken.exp * 1000) {
         // Token has expired, remove token record from the database
+        blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
 
         res.status(401).json({ message: "Token has expired" });
         return;
       } else {
 
+        blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -125,7 +253,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1h" });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
