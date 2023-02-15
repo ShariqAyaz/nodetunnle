@@ -6,19 +6,56 @@ const { sequelize, User, UserToken } = require("./models");
 const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
 
+const morgan = require('morgan');
+const path = require("path");
+const { createWriteStream } = require("fs");
+const rfs = require("rotating-file-stream");
+
 
 const app = express();
 app.use(bodyParser.json());
+app.use(morgan('dev'));
+
 var salt = bcrypt.genSaltSync(14);
 
-// home page
+
+const accessLogStream = rfs.createStream("access.log", {
+  interval: "1d", // rotate daily
+  path: path.join(__dirname, "log"),
+  size: "1M",
+  compress: "gzip", // compress rotated files
+  history: "access.log.%Y%m%d-%H%M%S", // keep up to 4 backup files
+  maxFiles: 10, // maximum number of backup files
+});
+
+app.use(morgan("combined", { stream: accessLogStream }));
+
+const errorLogStream = rfs.createStream('error.log', {
+  interval: '1d',
+  path: path.join(__dirname, 'log'),
+  size: "1M",
+  compress: 'gzip',
+  maxFiles: 10,
+});
+
+const consoleLogStream = process.stdout;
+
+const errorLogger = morgan('tiny', {
+  stream: errorLogStream,
+  skip: (req, res) => res.statusCode >= 400
+});
+
+// log errors to console and file
+app.use(errorLogger);
+
+
 app.get("/", (req, res) => {
   res.send("Welcome to the home page" + req.ip);
 });
 
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
 
+  const { email, password } = req.body;
   const user = await User.findOne({ where: { email } });
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
@@ -27,31 +64,65 @@ app.post("/login", async (req, res) => {
   }
 
   const user_id = user.id;
-
   const user_token_exists = await UserToken.findOne({ where: { user_id } });
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, "bingobaba777");
-
-    let ip = req.ip
-
+    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+    const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
-
-    res.json({ accessToken });
+    res.json({
+      message: "Obtain New Successfully",
+      accessToken
+    });
 
   } else {
-    
-    console.log(user_token_exists);
 
-    res.json({ accessToken });
+    try {
+      const decodedToken = jwt.verify(user_token_exists.accessToken, "bingobaba777");
+
+      // Check if the token has expired
+      if (Date.now() >= decodedToken.exp * 1000) {
+        // Token has expired, remove token record from the database
+        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+
+        res.status(401).json({ message: "Token has expired" });
+        return;
+      } else {
+
+        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const ip = req.ip
+        const newUserToken = await UserToken.create({ user_id, accessToken, ip });
+        res.json({
+          Message: "Renew Token Successfully",
+          accessToken: user_token_exists.accessToken
+        });
+
+      }
+
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+
+        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const ip = req.ip
+        const newUserToken = await UserToken.create({ user_id, accessToken, ip });
+        res.json({
+          accessToken,
+          message: "Token has expired | Renew Token Successfully"
+        });
+
+      } else res.status(401).json({ message: "Invalid token" });
+
+    }
+
   }
-
 });
 
 
-
 app.post("/register", async (req, res) => {
+
   const { username, email, password } = req.body;
   const p = password;
   try {
@@ -60,7 +131,9 @@ app.post("/register", async (req, res) => {
     console.log(password);
     const newUser = await User.create({ username, email, password });
     res.status(201).send("User created successfully");
+
   } catch (error) {
+
     if (error.name === "SequelizeValidationError") {
       // handle validation errors
       res.status(400).send(error.errors.map((e) => e.message));
@@ -72,23 +145,11 @@ app.post("/register", async (req, res) => {
       console.error(error);
       res.status(500).send("Internal Server Error");
     }
+
   }
+
 });
 
-// users page
-// app.get("/users", basicAuth({
-//   authorizer: (username, password) => {
-//     const user = User.findOne({ where: { email: username } });
-//     if (!user || user.password !== password) {
-//       return false;
-//     }
-//     return true;
-//   },
-//   authorizeAsync: true
-// }), (req, res) => {
-//   const users = User.findAll();
-//   res.json(users);
-// });
 
 app.get("/users", async (req, res) => {
   try {
