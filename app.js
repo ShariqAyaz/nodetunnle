@@ -111,7 +111,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
         if (usertoken.ip === req.ip) {
 
           UserToken.destroy({ where: { user_id: usertoken.user_id } });
-          const user = await User.findOne({ id: usertoken.user_id });
+          const user = await User.findOne({where:{ id: usertoken.user_id }});
           const email = user.email;
           const user_id = user.id;
           const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
