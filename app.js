@@ -62,7 +62,7 @@ const checkToken = (req, res, next) => {
     return next();
   }
 
-  jwt.verify(token, "bingobaba777", (err, user) => {
+  jwt.verify(token, process.env.SECRET_JWT, (err, user) => {
     if (err) {
       req.user = null;
       return next();
@@ -109,19 +109,19 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
       if (usertoken) {
 
         if (usertoken.ip === req.ip) {
-          
+
           UserToken.destroy({ where: { user_id: usertoken.user_id } });
-          const user = await User.findOne({ id: usertoken.user_id});
+          const user = await User.findOne({ id: usertoken.user_id });
           const email = user.email;
           const user_id = user.id;
-          const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
           const ip = req.ip;
           const newUserToken = await UserToken.create({ user_id, accessToken, ip });
           res.json({
             message: "Obtain New After Expire",
             accessToken
           });
-        }else{
+        } else {
           res.send(`Welcome...!<br> Login First <a href="/login">Login</a> |`);
         }
 
@@ -134,7 +134,10 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
       res.send('Your session has expired. Please log in again.');
     } else {
       // User is authenticated and has a valid token
-      res.send(`Welcome ${req.user.username} | ${req.user.email}! <a href="/logout">Logout</a> <a href="/profile">Profile</a>`);
+      const get_user = await User.findOne({ where: { email: req.user.email } });
+
+      res.send(`Welcome ${get_user.username} | ${req.user.email}! <a href="/logout">Logout</a> <a href="/profile">Profile</a>`);
+
     }
 
   }
@@ -144,7 +147,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 // Route to renew the user's token
 app.post("/renew-token", checkTokenBlacklist, (req, res) => {
   const { email } = req.body;
-  const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
   res.json({ accessToken });
 });
 
@@ -158,14 +161,16 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
 
   if (!authHeader) {
 
-    const user_id = user.id;
-    const user_token_exists = await UserToken.findOne({ where: { user_id } });
+    if (user!==null) {
+      const user_id = user.id;
+      const user_token_exists = await UserToken.findOne({ where: { user_id } });
 
-    if (user_token_exists) {
+      if (user_token_exists) {
 
-      UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-      blacklistedTokens.add(user_token_exists.accessToken);
+        UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+        blacklistedTokens.add(user_token_exists.accessToken);
 
+      }
     }
 
   } else {
@@ -182,17 +187,17 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
     }
   }
 
-  const user_id = user.id;
-  const user_token_exists = await UserToken.findOne({ where: { user_id } });
+  // const user_id = user.id;
+  // const user_token_exists = await UserToken.findOne({ where: { user_id } });
 
-  if (user_token_exists) {
-    UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+  // if (user_token_exists) {
+  //   UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
 
-    blacklistedTokens.add(token);
+  //   blacklistedTokens.add(token);
 
-  }
+  // }
 
-  console.log(blacklistedTokens);
+  //console.log(blacklistedTokens);
 
   res.sendStatus(200);
 });
@@ -214,7 +219,7 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
     res.json({
@@ -225,7 +230,7 @@ app.post("/login", async (req, res) => {
   } else {
 
     try {
-      const decodedToken = jwt.verify(user_token_exists.accessToken, "bingobaba777");
+      const decodedToken = jwt.verify(user_token_exists.accessToken, process.env.SECRET_JWT);
 
       // Check if the token has expired
       if (Date.now() >= decodedToken.exp * 1000) {
@@ -239,7 +244,7 @@ app.post("/login", async (req, res) => {
 
         blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -253,7 +258,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, "bingobaba777", { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -276,7 +281,7 @@ app.post("/register", async (req, res) => {
   try {
 
     const password = bcrypt.hashSync(p, salt);
-    console.log(password);
+
     const newUser = await User.create({ username, email, password });
     res.status(201).send("User created successfully");
 
