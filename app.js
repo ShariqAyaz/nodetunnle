@@ -5,6 +5,10 @@ const bodyParser = require("body-parser");
 const { sequelize, User, UserToken } = require("./models");
 const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
+const cors = require('cors');
+
+app.use(cors());
+
 
 // config = require('../config/config');
 
@@ -98,7 +102,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 
   if (!authHeader) {
     // User is not authenticated
-    res.send('Please log in to access this page');
+    res.send('Welcome...!<br> Login First <a href="/login">Login</a>');
   } else {
 
     const token = authHeader.split(" ")[1];
