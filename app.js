@@ -7,9 +7,6 @@ const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 
-app.use(cors());
-
-
 // config = require('../config/config');
 
 const morgan = require('morgan');
@@ -21,6 +18,7 @@ const rfs = require("rotating-file-stream");
 const app = express();
 app.use(bodyParser.json());
 app.use(morgan('dev'));
+app.use(cors());
 
 var salt = bcrypt.genSaltSync(14);
 
@@ -102,7 +100,14 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 
   if (!authHeader) {
     // User is not authenticated
-    res.send('Welcome...!<br> Login First <a href="/login">Login</a>');
+    
+    res.json({
+      message: `XWelcome LOGIN FIRST <a href="/login">Login</a>`,
+      links: {
+        logout: '/login',
+      }
+    });
+
   } else {
 
     const token = authHeader.split(" ")[1];
@@ -115,10 +120,10 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
         if (usertoken.ip === req.ip) {
 
           UserToken.destroy({ where: { user_id: usertoken.user_id } });
-          const user = await User.findOne({where:{ id: usertoken.user_id }});
+          const user = await User.findOne({ where: { id: usertoken.user_id } });
           const email = user.email;
           const user_id = user.id;
-          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
+          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
           const ip = req.ip;
           const newUserToken = await UserToken.create({ user_id, accessToken, ip });
           res.json({
@@ -126,11 +131,25 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
             accessToken
           });
         } else {
-          res.send(`Welcome...!<br> Login First <a href="/login">Login</a> |`);
+
+          res.json({
+            message: `YWelcome LOGIN FIRST <a href="/login">Login</a>`,
+            links: {
+              logout: '/login',
+            }
+          });
+
         }
 
       } else {
-        res.send(`Welcome...!<br> Login First <a href="/login">Login</a>`);
+
+        res.json({
+          message: `ZWelcome LOGIN FIRST <a href="/login">Login</a>`,
+          links: {
+            logout: '/login',
+          }
+        });
+  
       }
 
     } else if (blacklistedTokens.has(token)) {
@@ -140,7 +159,13 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
       // User is authenticated and has a valid token
       const get_user = await User.findOne({ where: { email: req.user.email } });
 
-      res.send(`Welcome ${get_user.username} | ${req.user.email}! <a href="/logout">Logout</a> <a href="/profile">Profile</a>`);
+      res.json({
+        message: `Welcome ${get_user.username} | ${req.user.email}!`,
+        links: {
+          logout: '/logout',
+          profile: '/profile'
+        }
+      });
 
     }
 
@@ -151,7 +176,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 // Route to renew the user's token
 app.post("/renew-token", checkTokenBlacklist, (req, res) => {
   const { email } = req.body;
-  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
+  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
   res.json({ accessToken });
 });
 
@@ -165,7 +190,7 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
 
   if (!authHeader) {
 
-    if (user!==null) {
+    if (user !== null) {
       const user_id = user.id;
       const user_token_exists = await UserToken.findOne({ where: { user_id } });
 
@@ -223,7 +248,7 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
+    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
     res.json({
@@ -248,7 +273,7 @@ app.post("/login", async (req, res) => {
 
         blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -262,7 +287,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "1m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
