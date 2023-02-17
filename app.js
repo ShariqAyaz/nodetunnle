@@ -102,9 +102,9 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
     // User is not authenticated
     
     res.json({
-      message: `XWelcome LOGIN FIRST <a href="/login">Login</a>`,
+      message: `Welcome Login First <a href=${'/login'}>Login</a>`,
       links: {
-        logout: '/login',
+        login: '/login',
       }
     });
 
@@ -132,10 +132,13 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
           });
         } else {
 
+          UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+          blacklistedTokens.add(user_token_exists.accessToken);
+
           res.json({
-            message: `YWelcome LOGIN FIRST <a href="/login">Login</a>`,
+            message: `Welcome Login Again <a href=${'/login'}>Login</a>`,
             links: {
-              logout: '/login',
+              login: '/login',
             }
           });
 
@@ -144,9 +147,9 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
       } else {
 
         res.json({
-          message: `ZWelcome LOGIN FIRST <a href="/login">Login</a>`,
+          message: `Welcome First <a href=${'/login'}>Login</a>`,
           links: {
-            logout: '/login',
+            login: '/login',
           }
         });
   
@@ -154,7 +157,12 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 
     } else if (blacklistedTokens.has(token)) {
       // User's token is blacklisted
-      res.send('Your session has expired. Please log in again.');
+      res.json({
+        message: `Your session has expired. Please log in again.`,
+        links: {
+          login: '/login',
+        }
+      });
     } else {
       // User is authenticated and has a valid token
       const get_user = await User.findOne({ where: { email: req.user.email } });
@@ -231,10 +239,15 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
   res.sendStatus(200);
 });
 
-
-
 app.post("/login", async (req, res) => {
-
+  // https://stackoverflow.com/questions/57540281/how-to-keep-a-user-logged-in-after-page-refresh 
+  // need to fix from here
+  //   router.post('/user/login', function(req, res) {
+  //     ....
+  //     req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // Cookie expires after 30 days
+  //     ....
+  // });
+  
   const { email, password } = req.body;
   const user = await User.findOne({ where: { email } });
 
@@ -300,8 +313,8 @@ app.post("/login", async (req, res) => {
     }
 
   }
-});
 
+});
 
 app.post("/register", async (req, res) => {
 
@@ -312,6 +325,7 @@ app.post("/register", async (req, res) => {
     const password = bcrypt.hashSync(p, salt);
 
     const newUser = await User.create({ username, email, password });
+
     res.status(201).send("User created successfully");
 
   } catch (error) {
