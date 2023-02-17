@@ -123,7 +123,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
           const user = await User.findOne({ where: { id: usertoken.user_id } });
           const email = user.email;
           const user_id = user.id;
-          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: process.env.SECRET_JWT });
+          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
           const ip = req.ip;
           const newUserToken = await UserToken.create({ user_id, accessToken, ip });
           res.json({
@@ -184,7 +184,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 // Route to renew the user's token
 app.post("/renew-token", checkTokenBlacklist, (req, res) => {
   const { email } = req.body;
-  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: process.env.SECRET_JWT });
+  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
   res.json({ accessToken });
 });
 
@@ -261,7 +261,7 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: process.env.TOKEN_EXPIRE }); 
+    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
     res.json({
@@ -286,7 +286,7 @@ app.post("/login", async (req, res) => {
 
         blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: process.env.SECRET_JWT });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -300,7 +300,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: process.env.SECRET_JWT });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
