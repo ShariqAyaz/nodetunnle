@@ -7,13 +7,10 @@ const socketIo = require("socket.io");
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 
-// config = require('../config/config');
-
 const morgan = require('morgan');
 const path = require("path");
 const { createWriteStream } = require("fs");
 const rfs = require("rotating-file-stream");
-
 
 const app = express();
 app.use(bodyParser.json());
@@ -96,13 +93,16 @@ const checkTokenBlacklist = (req, res, next) => {
 // Route handler for the home page
 app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 
+console.log(blacklistedTokens);
+
+
   const authHeader = req.headers["authorization"];
 
   if (!authHeader) {
     // User is not authenticated
     
     res.json({
-      message: `Welcome Login First <a href=${'/login'}>Login</a>`,
+      message: `!Welcome Login First <a href=${'/login'}>Login</a>`,
       links: {
         login: '/login',
       }
@@ -123,7 +123,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
           const user = await User.findOne({ where: { id: usertoken.user_id } });
           const email = user.email;
           const user_id = user.id;
-          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
+          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
           const ip = req.ip;
           const newUserToken = await UserToken.create({ user_id, accessToken, ip });
           res.json({
@@ -150,6 +150,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
           message: `Welcome First <a href=${'/login'}>Login</a>`,
           links: {
             login: '/login',
+            usertoken: usertoken
           }
         });
   
@@ -184,7 +185,7 @@ app.get('/', checkToken, checkTokenBlacklist, async (req, res) => {
 // Route to renew the user's token
 app.post("/renew-token", checkTokenBlacklist, (req, res) => {
   const { email } = req.body;
-  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
+  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
   res.json({ accessToken });
 });
 
@@ -195,10 +196,15 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
   const user = await User.findOne({ where: { email } });
 
   const authHeader = req.headers["authorization"];
-
+  
   if (!authHeader) {
 
+    console.log(authHeader);
+    
+    const token = authHeader.split(" ")[1];
+
     if (user !== null) {
+      
       const user_id = user.id;
       const user_token_exists = await UserToken.findOne({ where: { user_id } });
 
@@ -207,6 +213,9 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
         UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
         blacklistedTokens.add(user_token_exists.accessToken);
 
+      }else{
+        
+        blacklistedTokens.add(token);
       }
     }
 
@@ -240,13 +249,6 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  // https://stackoverflow.com/questions/57540281/how-to-keep-a-user-logged-in-after-page-refresh 
-  // need to fix from here
-  //   router.post('/user/login', function(req, res) {
-  //     ....
-  //     req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // Cookie expires after 30 days
-  //     ....
-  // });
   
   const { email, password } = req.body;
   const user = await User.findOne({ where: { email } });
@@ -261,9 +263,12 @@ app.post("/login", async (req, res) => {
 
   if (user_token_exists === null) {
 
-    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
+    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
+    req.session.accessToken.maxAge = 30 * 24 * 60 * 60 * 1000;
+    res.cookie('accessToken', accessToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+
     res.json({
       message: "Obtain New Successfully",
       accessToken
@@ -286,7 +291,7 @@ app.post("/login", async (req, res) => {
 
         blacklistedTokens.add(user_token_exists.accessToken);
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
@@ -300,7 +305,7 @@ app.post("/login", async (req, res) => {
       if (error instanceof jwt.TokenExpiredError) {
 
         await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "10m" });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
