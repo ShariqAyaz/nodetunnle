@@ -102,7 +102,7 @@ console.log(blacklistedTokens);
     // User is not authenticated
     
     res.json({
-      message: `!Welcome Login First <a href=${'/login'}>Login</a>`,
+      message: `Welcome...! you are require to Login first <a href=${'/login'}>Login</a>`,
       links: {
         login: '/login',
       }
@@ -123,7 +123,7 @@ console.log(blacklistedTokens);
           const user = await User.findOne({ where: { id: usertoken.user_id } });
           const email = user.email;
           const user_id = user.id;
-          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
+          const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "5m" });
           const ip = req.ip;
           const newUserToken = await UserToken.create({ user_id, accessToken, ip });
           res.json({
@@ -132,12 +132,13 @@ console.log(blacklistedTokens);
           });
         } else {
 
-          UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-          blacklistedTokens.add(user_token_exists.accessToken);
+          UserToken.destroy({ where: { user_id: oUserToken.user_id } });
+          blacklistedTokens.add(oUserToken.accessToken);
 
           res.json({
             message: `Welcome Login Again <a href=${'/login'}>Login</a>`,
             links: {
+              Reason: 'Logout, due to network changes',
               login: '/login',
             }
           });
@@ -147,9 +148,10 @@ console.log(blacklistedTokens);
       } else {
 
         res.json({
-          message: `Welcome First <a href=${'/login'}>Login</a>`,
+          message: `Welcome...! Kindly Login Again. <a href=${'/login'}>Login</a>`,
           links: {
             login: '/login',
+            Reason: 'Token is Retired, or blacklisted',
             usertoken: usertoken
           }
         });
@@ -185,7 +187,7 @@ console.log(blacklistedTokens);
 // Route to renew the user's token
 app.post("/renew-token", checkTokenBlacklist, (req, res) => {
   const { email } = req.body;
-  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
+  const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "5m" });
   res.json({ accessToken });
 });
 
@@ -193,7 +195,7 @@ app.post("/renew-token", checkTokenBlacklist, (req, res) => {
 app.post("/logout", checkTokenBlacklist, async (req, res) => {
 
   const { email } = req.body;
-  const user = await User.findOne({ where: { email } });
+  const oUser = await User.findOne({ where: { email } });
 
   const authHeader = req.headers["authorization"];
   
@@ -201,43 +203,44 @@ app.post("/logout", checkTokenBlacklist, async (req, res) => {
 
     console.log(authHeader);
     
-    const token = authHeader.split(" ")[1];
+    // const token = authHeader.split(" ")[1];
 
-    if (user !== null) {
+    if (oUser !== null) {
+
+      console.log("  NOT NULL 210  ");
       
-      const user_id = user.id;
-      const user_token_exists = await UserToken.findOne({ where: { user_id } });
+      const user_id = oUser.id;
+      const oUserToken = await UserToken.findOne({ where: { user_id } });
 
-      if (user_token_exists) {
+      if (oUserToken) {
 
-        UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        blacklistedTokens.add(user_token_exists.accessToken);
+        UserToken.destroy({ where: { user_id: oUserToken.user_id } });
+        blacklistedTokens.add(oUserToken.accessToken);
 
-      }else{
-        
-        blacklistedTokens.add(token);
       }
     }
 
   } else {
 
     const token = authHeader.split(" ")[1];
-    const user_id = user.id;
-    const user_token_exists = await UserToken.findOne({ where: { user_id } });
+    const user_id = oUser.id;
+    const oUserToken = await UserToken.findOne({ where: { user_id } });
 
-    if (user_token_exists) {
+    if (oUserToken) {
 
-      UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+      UserToken.destroy({ where: { user_id: oUserToken.user_id } });
       blacklistedTokens.add(token);
 
+    }else{
+      blacklistedTokens.add(token);
     }
   }
 
   // const user_id = user.id;
-  // const user_token_exists = await UserToken.findOne({ where: { user_id } });
+  // const oUserToken = await UserToken.findOne({ where: { user_id } });
 
-  // if (user_token_exists) {
-  //   UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+  // if (oUserToken) {
+  //   UserToken.destroy({ where: { user_id: oUserToken.user_id } });
 
   //   blacklistedTokens.add(token);
 
@@ -259,15 +262,16 @@ app.post("/login", async (req, res) => {
   }
 
   const user_id = user.id;
-  const user_token_exists = await UserToken.findOne({ where: { user_id } });
+  const oUserToken = await UserToken.findOne({ where: { user_id } });
 
-  if (user_token_exists === null) {
+  if (oUserToken === null) {
 
-    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
+    const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "5m" });
     const ip = req.ip;
     const newUserToken = await UserToken.create({ user_id, accessToken, ip });
-    req.session.accessToken.maxAge = 30 * 24 * 60 * 60 * 1000;
-    res.cookie('accessToken', accessToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+
+    // req.session.accessToken.maxAge = 30 * 24 * 60 * 60 * 1000;
+    // res.cookie('accessToken', accessToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
 
     res.json({
       message: "Obtain New Successfully",
@@ -277,26 +281,26 @@ app.post("/login", async (req, res) => {
   } else {
 
     try {
-      const decodedToken = jwt.verify(user_token_exists.accessToken, process.env.SECRET_JWT);
+      const decodedToken = jwt.verify(oUserToken.accessToken, process.env.SECRET_JWT);
 
       // Check if the token has expired
       if (Date.now() >= decodedToken.exp * 1000) {
         // Token has expired, remove token record from the database
-        blacklistedTokens.add(user_token_exists.accessToken);
-        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
+        blacklistedTokens.add(oUserToken.accessToken);
+        await UserToken.destroy({ where: { user_id: oUserToken.user_id } });
 
         res.status(401).json({ message: "Token has expired" });
         return;
       } else {
 
-        blacklistedTokens.add(user_token_exists.accessToken);
-        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
+        blacklistedTokens.add(oUserToken.accessToken);
+        await UserToken.destroy({ where: { user_id: oUserToken.user_id } });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "5m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
           Message: "Renew Token Successfully",
-          accessToken: user_token_exists.accessToken
+          accessToken: oUserToken.accessToken
         });
 
       }
@@ -304,8 +308,8 @@ app.post("/login", async (req, res) => {
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
 
-        await UserToken.destroy({ where: { user_id: user_token_exists.user_id } });
-        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "2m" });
+        await UserToken.destroy({ where: { user_id: oUserToken.user_id } });
+        const accessToken = jwt.sign({ email }, process.env.SECRET_JWT, { expiresIn: "5m" });
         const ip = req.ip
         const newUserToken = await UserToken.create({ user_id, accessToken, ip });
         res.json({
