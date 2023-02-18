@@ -292,6 +292,7 @@ app.post("/login", async (req, res) => {
         res.status(401).json({ message: "Token has expired" });
         return;
       } else {
+        
 
         blacklistedTokens.add(oUserToken.accessToken);
         await UserToken.destroy({ where: { user_id: oUserToken.user_id } });
