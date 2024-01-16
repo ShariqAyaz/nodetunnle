@@ -10,6 +10,8 @@ android/local.properties
 # macOS
 .DS_Store
 
+.env
+
 # Windows
 Thumbs.db
 
