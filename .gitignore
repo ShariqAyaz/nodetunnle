@@ -1,5 +1,98 @@
+# Dependency directories
+node_modules/
+pods/
+# Gradle files
+android/.gradle/
+android/build/
+android/gradle.properties
+android/local.properties
 
+# macOS
+.DS_Store
 
-.env
-log/*
-config/*
+# Windows
+Thumbs.db
+
+# Node.js
+node_modules/
+
+# React Native
+android/
+ios/
+*.log
+
+# Dependency directories
+/node_modules
+/ios/Pods
+/ios/build
+
+# Gradle files
+*.iml
+.gradle/
+/build/
+
+# CocoaPods
+/Pods
+*.lock
+
+# Expo
+.expo/
+.expo-shared/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.user
+*.suo
+*.bak
+*.cache
+*.log
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Compiled files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.hprof
+build/
+dist/
+android/app/build/
+ios/build/
+ios/Pods/
+
+# Miscellaneous
+*.tmp
+*.temp
+*.swp
+.DS_Store?
+.project
+.projectpath
+*.sublime*
+*.iml
+*.bak
+*.swo
+*.swp
+*.orig
+._*
+npm-debug.log
+npm-debug.log.*
+yarn-error.log
+yarn-debug.log
