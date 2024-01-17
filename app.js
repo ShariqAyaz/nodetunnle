@@ -17,6 +17,8 @@ app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use(cors());
 
+const axios = require("axios");
+
 var salt = bcrypt.genSaltSync(14);
 
 
@@ -337,8 +339,18 @@ app.post("/api/register", async (req, res) => {
 
     try {
       const hashedPassword = await bcrypt.hash(password, salt);
-      const newUser = await User.create({ username, email, password: hashedPassword });
-      res.status(201).send("User created successfully");
+      const newUser = await User.create({ username: username.toLowerCase(), email: email.toLowerCase(), password: hashedPassword });
+
+      // // Invoke /api/login internally
+      // const loginResponse = await axios.post("http://localhost:3000/api/login", { email: email.toLowerCase(), password });
+
+      //res.status(201).send(`User created successfully. ${loginResponse.data}`);
+      //res.status(201).send({`User created successfully.`});
+
+      res.status(201).json({
+        message: "User Created Successfully",
+      });
+
     } catch (error) {
       console.error(error);
       res.status(500).send("Error creating user");
