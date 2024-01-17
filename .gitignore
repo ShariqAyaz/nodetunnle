@@ -12,6 +12,8 @@ android/local.properties
 
 .env
 
+push.sh
+
 # Windows
 Thumbs.db
 
