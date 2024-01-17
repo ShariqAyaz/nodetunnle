@@ -253,6 +253,7 @@ app.post("/api/logout", checkTokenBlacklist, async (req, res) => {
 app.post("/api/login", async (req, res) => {
 
   const { email, password } = req.body;
+  
   const user = await User.findOne({ where: { email } });
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
