@@ -61,16 +61,17 @@ const checkToken = (req, res, next) => {
     return next();
   }
 
-  jwt.verify(token, process.env.SECRET_JWT, (err, user) => {
+  jwt.verify(token, process.env.SECRET_JWT, (err, decoded) => {
     if (err) {
       req.user = null;
       return next();
     }
 
-    req.user = user;
+    req.user = { id: decoded.id }; // Modify as per your requirement
     next();
   });
 };
+
 
 // Middleware to check if the user's token is blacklisted
 const accessTokenExpirationTime = 60; // 1 hour in minutes
@@ -323,35 +324,27 @@ app.post("/api/login", async (req, res) => {
 
 });
 
+
 app.post("/api/register", async (req, res) => {
-
   const { username, email, password } = req.body;
-  const p = password;
-  try {
 
-    const password = bcrypt.hashSync(p, salt);
-
-    const newUser = await User.create({ username, email, password });
-
-    res.status(201).send("User created successfully");
-
-  } catch (error) {
-
-    if (error.name === "SequelizeValidationError") {
-      // handle validation errors
-      res.status(400).send(error.errors.map((e) => e.message));
-    } else if (error.name === "SequelizeUniqueConstraintError") {
-      // handle other errors
-      console.error(error);
-      res.status(200).send("Duplicate constraint");
-    } else {
-      console.error(error);
-      res.status(500).send("Internal Server Error");
+  bcrypt.genSalt(10, async (err, salt) => {
+    if (err) {
+      // handle error appropriately
+      return res.status(500).send("Error in salt generation");
     }
 
-  }
-
+    try {
+      const hashedPassword = await bcrypt.hash(password, salt);
+      const newUser = await User.create({ username, email, password: hashedPassword });
+      res.status(201).send("User created successfully");
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Error creating user");
+    }
+  });
 });
+
 
 
 app.get("/api/users", async (req, res) => {
