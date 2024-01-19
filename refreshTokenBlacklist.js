@@ -1,6 +1,6 @@
-const MAX_TOKEN_AGE = 3600 * 1000; // Max token age in milliseconds (1 hour)
+const MAX_TOKEN_AGE = 3600 * 1000; // 1 hr
 
-// Function to remove expired tokens from the blacklist
+// Remove expire entry in the blacklist tabl
 const pruneBlacklistedTokens = () => {
   const now = Date.now();
   blacklistedTokens.forEach((token, tokenTime) => {
@@ -10,5 +10,4 @@ const pruneBlacklistedTokens = () => {
   });
 };
 
-// Schedule the task to run every hour
 setInterval(pruneBlacklistedTokens, 3600 * 1000);
