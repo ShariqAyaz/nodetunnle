@@ -64,7 +64,7 @@ debug.log*
 *.cache
 *.log
 .idea/
-
+.env
 # OS-specific files
 .DS_Store
 Thumbs.db
